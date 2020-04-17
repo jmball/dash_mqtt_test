@@ -39,8 +39,6 @@ app.layout = html.Div(
 def update_graph_live(n):
     global data
 
-    data = np.append(data, np.array([[n, n ** 2]]), axis=0)
-
     # Create the graph with subplots
     fig = plotly.subplots.make_subplots(rows=1, cols=1)
     fig.append_trace(
