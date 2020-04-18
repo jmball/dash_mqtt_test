@@ -1,18 +1,14 @@
 """Plot data obtained from MQTT broker using Dash."""
 
-import numpy as np
 import json
 
-# import context  # Ensures paho is in PYTHONPATH
-import paho.mqtt.client as mqtt
-
 import dash
+from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
+import numpy as np
+import paho.mqtt.client as mqtt
 import plotly
-from dash.dependencies import Input, Output
-
-import time
 
 host = "127.0.0.1"
 
@@ -34,9 +30,11 @@ app.layout = html.Div(
 
 
 @app.callback(
-    Output("live-update-graph", "figure"), [Input("interval-component", "n_intervals")]
+    dash.dependencies.Output("live-update-graph", "figure"),
+    [dash.dependencies.Input("interval-component", "n_intervals")],
 )
 def update_graph_live(n):
+    """Update graph."""
     global data
 
     # Create the graph with subplots
@@ -56,11 +54,11 @@ def update_graph_live(n):
     return fig
 
 
-app.run_server(host="127.0.0.2", debug=True)
-
-
 def on_message(mqttc, obj, msg):
-    """Append or clear data."""
+    """Act on an MQTT msg.
+
+    Append or clear data.
+    """
     global data
     d = json.loads(msg.payload)
     if msg.payload == "clear":
@@ -74,4 +72,12 @@ mqttc = mqtt.Client()
 mqttc.on_message = on_message
 mqttc.connect(host)
 mqttc.subscribe("data", qos=2)
-mqttc.loop_forever()
+
+# start new thread for mqtt client
+mqttc.loop_start()
+
+# start dash server
+app.run_server(host="127.0.0.2", debug=True, use_reloader=False)
+
+# stop mqtt thread
+mqttc.loop_stop()
