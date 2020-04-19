@@ -22,16 +22,15 @@ while loop:
         t = time.time() - tstart
         if t > 20:
             # clear every 20s
-            info = mqttc.publish("data", "clear", qos=2)
-            info.wait_for_publish()
+            d = {"clear": True}
             tstart = time.time()
         else:
             y = t ** 2 - 10
-            d = {"x": t, "y": y}
-            d = json.dumps(d)
-            info = mqttc.publish("data", d, qos=2)
-            info.wait_for_publish()
-        time.sleep(0.25)
+            d = {"x": t, "y": y, "clear": False}
+        d = json.dumps(d)
+        info = mqttc.publish("data", d, qos=2)
+        info.wait_for_publish()
+        time.sleep(1)
     except KeyboardInterrupt:
         loop = False
 
