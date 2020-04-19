@@ -1,38 +1,76 @@
 """MQTT client producing data."""
 
 import json
-
-# import context  # Ensures paho is in PYTHONPATH
-import paho.mqtt.client as mqtt
+import queue
+import threading
 import time
 
-host = "127.0.0.1"
+import paho.mqtt.client as mqtt
+
+
+MQTTHOST = "127.0.0.1"
+
+
+def publish():
+    """Read from queue and publish data using mqtt."""
+    while True:
+        try:
+            # read data from queue
+            d = q.get(timeout=2)
+            info = mqttc.publish("data", d, qos=2)
+            info.wait_for_publish()
+        except queue.Empty:
+            break
+
+
+# Producer function will add data to a queue that mqtt client worker can publish. It's
+# better not to let mqtt publish data immediately because it's slow and blocks the
+# program. Writing to and reading from a queue is fast allowing the two steps to be
+# decoupled.
+q = queue.Queue()
+
+# Create thread that reads from queue and publishes data over mqtt.
+p = threading.Thread(target=publish)
+p.start()
 
 # create client and connect to server
 mqttc = mqtt.Client()
-mqttc.connect(host)
+mqttc.connect(MQTTHOST)
 
 # start new mqtt thread
 mqttc.loop_start()
 
-tstart = time.time()
-loop = True
-while loop:
+# Produce data
+while True:
     try:
-        t = time.time() - tstart
-        if t > 20:
-            # clear every 20s
-            d = {"clear": True}
-            tstart = time.time()
-        else:
-            y = t ** 2 - 10
-            d = {"x": t, "y": y, "clear": False}
+        for i in range(20):
+            y = i ** 2
+            d = {"x": i, "y": y, "clear": False}
+            # turn dict into string that mqtt can send
+            d = json.dumps(d)
+            # add data to queue
+            q.put(d)
+            time.sleep(1)
+
+        # signal to clear the data array
+        d = {"clear": True}
         d = json.dumps(d)
-        info = mqttc.publish("data", d, qos=2)
-        info.wait_for_publish()
+        q.put(d)
+        time.sleep(1)
+
+        for i in range(20):
+            y = -2 * i + 10
+            d = {"x": i, "y": y, "clear": False}
+            d = json.dumps(d)
+            q.put(d)
+            time.sleep(1)
+
+        d = {"clear": True}
+        d = json.dumps(d)
+        q.put(d)
         time.sleep(1)
     except KeyboardInterrupt:
-        loop = False
+        break
 
 # close mqtt thread
 mqttc.loop_stop()

@@ -12,20 +12,27 @@ import plotly
 MQTTHOST = "127.0.0.1"
 DASHHOST = "127.0.0.2"
 
+# This is a global variable to store and access incoming data. In this example it's ok
+# because only one client can write the variable value. However, in general, this will
+# cause problems when multiple clients try to write the variable.
+# See https://dash.plotly.com/sharing-data-between-callbacks
 data = np.empty((0, 2))
 
 app = dash.Dash(__name__)
+
 app.layout = html.Div(
-    html.Div(
-        [
-            dcc.Graph(id="live-update-graph", animate=True),
-            dcc.Interval(
-                id="interval-component",
-                interval=1 * 1000,  # in milliseconds
-                n_intervals=0,
-            ),
-        ]
-    )
+    [
+        dcc.Graph(
+            id="live-update-graph",
+            animate=True,
+            style={"width": "100vw", "height": "100vh"},
+        ),
+        dcc.Interval(
+            id="interval-component",
+            interval=1 * 1000,  # in milliseconds
+            n_intervals=0,
+        ),
+    ]
 )
 
 
@@ -35,6 +42,7 @@ app.layout = html.Div(
 )
 def update_graph_live(n):
     """Update graph."""
+    # WARNING: it's usually a bad idea to use global variables with Dash
     global data
 
     trace = {"x": data[:, 0], "y": data[:, 1], "type": "scatter"}
@@ -54,8 +62,9 @@ def update_graph_live(n):
 def on_message(mqttc, obj, msg):
     """Act on an MQTT msg.
 
-    Append or clear data.
+    Append or clear data stored in a global variable.
     """
+    # WARNING: it's usually a bad idea to use global variables with Dash
     global data
     d = json.loads(msg.payload)
     if d["clear"] is True:
