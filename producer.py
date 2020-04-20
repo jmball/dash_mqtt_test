@@ -6,7 +6,7 @@ import threading
 import time
 
 import paho.mqtt.client as mqtt
-
+import numpy as np
 
 MQTTHOST = "127.0.0.1"
 
@@ -43,32 +43,78 @@ mqttc.loop_start()
 # Produce data
 while True:
     try:
-        for i in range(20):
-            y = i ** 2
-            d = {"x": i, "y": y, "clear": False}
+        # data for type 1 graph
+        for i in range(40):
+            y = 1 + (np.random.rand() - 0.5) / 3
+            d = {
+                "x1": i,
+                "y1": y,
+                "clear": False,
+                "type": "type1",
+                "ylabel": "voltage (V)",
+            }
             # turn dict into string that mqtt can send
             d = json.dumps(d)
             # add data to queue
             q.put(d)
-            time.sleep(1)
+            time.sleep(0.25)
 
         # signal to clear the data array
-        d = {"clear": True}
+        d = {"clear": True, "type": "type2"}
         d = json.dumps(d)
         q.put(d)
-        time.sleep(1)
+        time.sleep(2)
 
-        for i in range(20):
-            y = -2 * i + 10
-            d = {"x": i, "y": y, "clear": False}
+        # data for type 2 graph
+        x1 = np.linspace(-1, 10, 11)
+        x2 = x1
+        y1 = -2 * x1
+        y2 = -2.5 * x2
+        arr = np.vstack([x1, y1, x2, y2]).T
+        d = {"data": arr.tolist(), "clear": False, "type": "type2"}
+        # turn dict into string that mqtt can send
+        d = json.dumps(d)
+        # add data to queue
+        q.put(d)
+        time.sleep(2)
+
+        # signal to clear the data array
+        d = {"clear": True, "type": "type3"}
+        d = json.dumps(d)
+        q.put(d)
+        time.sleep(2)
+
+        # data for type 3 graph
+        for i in range(40):
+            y1 = 20 + 2 * (np.random.rand() - 0.5)
+            y2 = y1 + 1
+            y3 = 1 + (np.random.rand() - 0.5) / 3
+            d = {"x1": i, "y1": y1, "y2": y2, "y3": y3, "clear": False, "type": "type3"}
             d = json.dumps(d)
             q.put(d)
-            time.sleep(1)
+            time.sleep(0.25)
 
-        d = {"clear": True}
+        # signal to clear the data array
+        d = {"clear": True, "type": "type4"}
         d = json.dumps(d)
         q.put(d)
-        time.sleep(1)
+        time.sleep(2)
+
+        # data for type 4 graph
+        for i in range(40):
+            y1 = -i + 10
+            y2 = i
+            d = {"x1": i, "y1": y1, "y2": y2, "clear": False, "type": "type4"}
+            d = json.dumps(d)
+            q.put(d)
+            time.sleep(0.25)
+
+        # signal to clear the data array
+        d = {"clear": True, "type": "type1"}
+        d = json.dumps(d)
+        q.put(d)
+        time.sleep(2)
+
     except KeyboardInterrupt:
         break
 
