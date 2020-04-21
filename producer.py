@@ -11,28 +11,20 @@ import numpy as np
 MQTTHOST = "mqtt.greyltc.com"
 
 
-def publish():
+def publish_q_to_mqtt_client(local_q, local_mqttc):
     """Read from queue and publish data using mqtt."""
-    while True:
-        try:
-            # read data from queue
-            d = q.get(timeout=3)
-            q.task_done()
-            info = mqttc.publish("data", d, qos=2)
-            info.wait_for_publish()
-        except queue.Empty:
-            break
-
+    if not local_q.empty():
+        # read data from queue
+        d = local_q.get(timeout=3)
+        local_q.task_done()
+        info = mqttc_client.publish("data", d, qos=2)
+        info.wait_for_publish()
 
 # Producer function will add data to a queue that mqtt client worker can publish. It's
 # better not to let mqtt publish data immediately because it's slow and blocks the
 # program. Writing to and reading from a queue is fast allowing the two steps to be
 # decoupled.
 q = queue.Queue()
-
-# Create thread that reads from queue and publishes data over mqtt.
-p = threading.Thread(target=publish)
-p.start()
 
 # let's wrap the client with __enter__ and __exit__ methods
 # so that we can make sure it gets cleaned up properly
@@ -41,6 +33,10 @@ class WrappedClient(mqtt.Client):
         self._connect_args = args
         self._connect_kwargs = kwargs
 
+    # register a thread to be cleaned up later
+    def add_thread(self, thread):
+        self.p = thread
+
     def __enter__(self):
         super(WrappedClient, self).connect(*self._connect_args, **self._connect_kwargs)
         return self
@@ -48,7 +44,8 @@ class WrappedClient(mqtt.Client):
     def __exit__(self, exc_type, exc_val, exc_tb):
         # make sure everything gets cleaned up properly
         print('\nCleaning up...')
-        p.join()
+        if 'p' in self.__dict__:
+            self.p.join()  # join thread only if it was registered here
         self.loop_stop()
         self.disconnect()
         print('All clean!')
@@ -58,6 +55,10 @@ c.connect(MQTTHOST)  # fake connection here
 
 # create client and connect to server
 with c as mqttc: # actual connection happens in the __enter__ that gets called here
+    # Create thread that reads from queue and publishes data over mqtt.
+    p = threading.Thread(target=publish_q_to_mqtt_client, args=(q, mqttc, ))
+    p.start()
+    mqttc.add_thread(p)  # register the thread so it gets cleaned up
 
     # start new mqtt thread
     mqttc.loop_start()
