@@ -8,7 +8,7 @@ import time
 import paho.mqtt.client as mqtt
 import numpy as np
 
-MQTTHOST = "127.0.0.1"
+MQTTHOST = "mqtt.greyltc.com"
 
 
 def publish():
@@ -33,16 +33,39 @@ q = queue.Queue()
 p = threading.Thread(target=publish)
 p.start()
 
+tool = mqtt.Client()
+tool._host
+
+# let's wrap the client with __enter__ and __exit__ methods
+# so that we can make sure it gets cleaned up properly
+class WrappedClient(mqtt.Client):
+    def connect(self, *args, **kwargs):
+        self._connect_args = args
+        self._connect_kwargs = kwargs
+
+    def __enter__(self):
+        super(WrappedClient, self).connect(*self._connect_args, **self._connect_kwargs)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # make sure the dbconnection gets closed
+        print('\nCleaning up...')
+        p.join()
+        self.loop_stop()
+        self.disconnect()
+        print('All clean!')
+
+c = WrappedClient()
+c.connect(MQTTHOST)  # fake connection here
+
 # create client and connect to server
-mqttc = mqtt.Client()
-mqttc.connect(MQTTHOST)
+with c as mqttc: # actual connection happens in the __enter__ that gets called here
 
-# start new mqtt thread
-mqttc.loop_start()
+    # start new mqtt thread
+    mqttc.loop_start()
 
-# Produce data
-while True:
-    try:
+    # Produce data
+    while True:
         # data for type 1 graph
         for i in range(40):
             y = 1 + (np.random.rand() - 0.5) / 3
@@ -114,9 +137,3 @@ while True:
         d = json.dumps(d)
         q.put(d)
         time.sleep(2)
-
-    except KeyboardInterrupt:
-        break
-
-# close mqtt thread
-mqttc.loop_stop()
