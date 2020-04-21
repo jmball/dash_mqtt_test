@@ -38,8 +38,12 @@ class WrappedClient(mqtt.Client):
         self._connect_kwargs = kwargs
 
     # register a thread to be cleaned up later
-    def add_thread(self, thread):
+    def register_thread(self, thread):
         self.p = thread
+
+    # add the q so we can send the die command
+    def register_q(self, local_q):
+        self.q = local_q
 
     def __enter__(self):
         super(WrappedClient, self).connect(*self._connect_args, **self._connect_kwargs)
@@ -48,8 +52,8 @@ class WrappedClient(mqtt.Client):
     def __exit__(self, exc_type, exc_val, exc_tb):
         # make sure everything gets cleaned up properly
         print('\nCleaning up...')
-        if 'p' in self.__dict__:
-            q.put('die')  # send the thread a kill command
+        if ('p' in self.__dict__) and ('q' in self.__dict__):
+            self.q.put('die')  # send the thread a kill command
             self.p.join()  # join thread only if it was registered here
         self.loop_stop()
         self.disconnect()
@@ -63,8 +67,9 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
     # Create thread that reads from queue and publishes data over mqtt.
     p = threading.Thread(target=publish_q_to_mqtt_client, args=(q, mqttc, ))
     p.start()
-    mqttc.add_thread(p)  # register the thread so it gets cleaned up
-
+    mqttc.register_thread(p)  # register the thread so it gets cleaned up
+    mqttc.register_q(q)  # register the queue so we can send the cleanup command
+    
     # start new mqtt thread
     mqttc.loop_start()
 
