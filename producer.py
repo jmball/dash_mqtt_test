@@ -49,7 +49,7 @@ class WrappedClient(mqtt.Client):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # make sure the dbconnection gets closed
+        # make sure everything gets cleaned up properly
         print('\nCleaning up...')
         p.join()
         self.loop_stop()
