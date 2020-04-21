@@ -9,9 +9,8 @@ import numpy as np
 import paho.mqtt.client as mqtt
 import plotly.graph_objs as go
 
-# MQTTHOST = "127.0.0.1"
 MQTTHOST = "mqtt.greyltc.com"
-DASHHOST = "127.0.0.2"
+DASHHOST = "127.0.0.1"
 
 
 def format_graph(latest_data, fig):
