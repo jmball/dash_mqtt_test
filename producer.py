@@ -17,7 +17,7 @@ def publish_q_to_mqtt_client(local_q, local_mqttc):
     while True:
         if len(q) > 0:
             # read data from queue
-            d = local_q.pop()
+            d = local_q.popleft()
             if d == 'die':  # return if we were asked to die
                 return
             info = local_mqttc.publish("data", d, qos=2)
