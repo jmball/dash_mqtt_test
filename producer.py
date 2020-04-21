@@ -34,9 +34,6 @@ q = queue.Queue()
 p = threading.Thread(target=publish)
 p.start()
 
-tool = mqtt.Client()
-tool._host
-
 # let's wrap the client with __enter__ and __exit__ methods
 # so that we can make sure it gets cleaned up properly
 class WrappedClient(mqtt.Client):
