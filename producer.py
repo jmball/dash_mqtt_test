@@ -2,7 +2,7 @@
 """MQTT client producing data."""
 
 import json
-import queue
+import collections
 import threading
 import time
 
@@ -15,12 +15,11 @@ MQTTHOST = "mqtt.greyltc.com"
 def publish_q_to_mqtt_client(local_q, local_mqttc):
     """Read from queue and publish data using mqtt."""
     while True:
-        if not local_q.empty():
+        if len(q) > 0:
             # read data from queue
-            d = local_q.get(timeout=3)
+            d = local_q.pop()
             if d == 'die':  # return if we were asked to die
                 return
-            local_q.task_done()
             info = local_mqttc.publish("data", d, qos=2)
             info.wait_for_publish()
 
@@ -28,7 +27,7 @@ def publish_q_to_mqtt_client(local_q, local_mqttc):
 # better not to let mqtt publish data immediately because it's slow and blocks the
 # program. Writing to and reading from a queue is fast allowing the two steps to be
 # decoupled.
-q = queue.Queue()
+q = collections.deque()
 
 # let's wrap the client with __enter__ and __exit__ methods
 # so that we can make sure it gets cleaned up properly
@@ -53,7 +52,7 @@ class WrappedClient(mqtt.Client):
         # make sure everything gets cleaned up properly
         print('\nCleaning up...')
         if ('p' in self.__dict__) and ('q' in self.__dict__):
-            self.q.put('die')  # send the thread a kill command
+            self.q.appendleft('die')  # send the thread a kill command
             self.p.join()  # join thread only if it was registered here
         self.loop_stop()
         self.disconnect()
@@ -69,7 +68,7 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
     p.start()
     mqttc.register_thread(p)  # register the thread so it gets cleaned up
     mqttc.register_q(q)  # register the queue so we can send the cleanup command
-    
+
     # start new mqtt thread
     mqttc.loop_start()
 
@@ -88,14 +87,14 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
             # turn dict into string that mqtt can send
             d = json.dumps(d)
             # add data to queue
-            q.put(d)
+            q.append(d)
             time.sleep(0.25)
 
         # signal to clear the data array
         time.sleep(2)
         d = {"clear": True, "type": "type2"}
         d = json.dumps(d)
-        q.put(d)
+        q.append(d)
 
         # data for type 2 graph
         x1 = np.linspace(-1, 30, 100)
@@ -107,13 +106,13 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
         # turn dict into string that mqtt can send
         d = json.dumps(d)
         # add data to queue
-        q.put(d)
+        q.append(d)
 
         # signal to clear the data array
         time.sleep(2)
         d = {"clear": True, "type": "type3"}
         d = json.dumps(d)
-        q.put(d)
+        q.append(d)
 
         # data for type 3 graph
         for i in range(100):
@@ -122,14 +121,14 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
             y3 = 1 + (np.random.rand() - 0.5) / 3
             d = {"x1": i, "y1": y1, "y2": y2, "y3": y3, "clear": False, "type": "type3"}
             d = json.dumps(d)
-            q.put(d)
+            q.append(d)
             time.sleep(0.25)
 
         # signal to clear the data array
         time.sleep(2)
         d = {"clear": True, "type": "type4"}
         d = json.dumps(d)
-        q.put(d)
+        q.append(d)
 
         # data for type 4 graph
         for i in range(100):
@@ -137,11 +136,11 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
             y2 = i
             d = {"x1": i, "y1": y1, "y2": y2, "clear": False, "type": "type4"}
             d = json.dumps(d)
-            q.put(d)
+            q.append(d)
             time.sleep(0.25)
 
         # signal to clear the data array
         time.sleep(2)
         d = {"clear": True, "type": "type1"}
         d = json.dumps(d)
-        q.put(d)
+        q.append(d)
