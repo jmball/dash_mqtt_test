@@ -9,7 +9,8 @@ import numpy as np
 import paho.mqtt.client as mqtt
 import plotly.graph_objs as go
 
-MQTTHOST = "127.0.0.1"
+# MQTTHOST = "127.0.0.1"
+MQTTHOST = "mqtt.greyltc.com"
 DASHHOST = "127.0.0.2"
 
 
@@ -30,155 +31,164 @@ def format_graph(latest_data, fig):
     """
     m, data = latest_data
 
-    if m["type"] == "type1":
-        xlabel = "time (s)"
-        ylabel = m["ylabel"]
-        trace1 = go.Scatter(x=data[:, 0], y=data[:, 1], mode="lines+markers", name="y1")
-        xmin = min(data[:, 0])
-        xmax = max(data[:, 0])
-        ymin = min(data[:, 1])
-        ymax = max(data[:, 1])
-        fig.add_trace(trace1)
-        yaxis = {
-            "title": f"{ylabel}",
+    print(m, np.shape(data))
+
+    if m["clear"] is not True:
+        if m["type"] == "type1":
+            xlabel = "time (s)"
+            ylabel = m["ylabel"]
+            trace1 = go.Scatter(
+                x=data[:, 0], y=data[:, 1], mode="lines+markers", name="y1"
+            )
+            xmin = min(data[:, 0])
+            xmax = max(data[:, 0])
+            ymin = min(data[:, 1])
+            ymax = max(data[:, 1])
+            fig.add_trace(trace1)
+            yaxis = {
+                "title": f"{ylabel}",
+                "ticks": "inside",
+                "mirror": "ticks",
+                "linecolor": "#444",
+                "showline": True,
+                "showgrid": False,
+                "zeroline": True,
+                "range": [ymin, ymax],
+            }
+            layout = {"yaxis": yaxis}
+
+        elif m["type"] == "type2":
+            xlabel = "voltage (V)"
+            ylabel = "current (A)"
+            trace1 = go.Scatter(
+                x=data[:, 0], y=data[:, 1], mode="lines+markers", name="fwd"
+            )
+            trace2 = go.Scatter(
+                x=data[:, 2], y=data[:, 3], mode="lines+markers", name="rev"
+            )
+            xmin = min(np.append(data[:, 0], data[:, 2]))
+            xmax = max(np.append(data[:, 0], data[:, 2]))
+            ymin = min(np.append(data[:, 1], data[:, 3]))
+            ymax = max(np.append(data[:, 1], data[:, 3]))
+            fig.add_trace(trace1)
+            fig.add_trace(trace2)
+            yaxis = {
+                "title": f"{ylabel}",
+                "ticks": "inside",
+                "mirror": "ticks",
+                "linecolor": "#444",
+                "showline": True,
+                "showgrid": False,
+                "range": [ymin, ymax],
+                "zeroline": True,
+            }
+            layout = {"yaxis": yaxis}
+
+        elif m["type"] == "type3":
+            xlabel = "time (s)"
+            ylabel = "current (A) | power (W)"
+            ylabel2 = "voltage (V)"
+            trace1 = go.Scatter(
+                x=data[:, 0], y=data[:, 1], mode="lines+markers", name="I", yaxis="y1",
+            )
+            trace2 = go.Scatter(
+                x=data[:, 0], y=data[:, 2], mode="lines+markers", name="P", yaxis="y1",
+            )
+            trace3 = go.Scatter(
+                x=data[:, 0], y=data[:, 3], mode="lines+markers", name="V", yaxis="y2",
+            )
+            xmin = min(data[:, 0])
+            xmax = max(data[:, 0])
+            ymin = min(np.append(data[:, 1], data[:, 2]))
+            ymax = max(np.append(data[:, 1], data[:, 2]))
+            ymin2 = min(data[:, 3])
+            ymax2 = max(data[:, 3])
+            fig.add_trace(trace1)
+            fig.add_trace(trace2)
+            fig.add_trace(trace3)
+            yaxis = {
+                "title": f"{ylabel}",
+                "ticks": "inside",
+                "mirror": True,
+                "linecolor": "#444",
+                "showline": True,
+                "showgrid": False,
+                "range": [ymin, ymax],
+                "zeroline": True,
+            }
+            yaxis2 = {
+                "title": f"{ylabel2}",
+                "ticks": "inside",
+                "linecolor": "#444",
+                "showline": True,
+                "side": "right",
+                "showgrid": False,
+                "range": [ymin2, ymax2],
+                "zeroline": False,
+                "overlaying": "y",
+            }
+            layout = {"yaxis": yaxis, "yaxis2": yaxis2}
+
+        elif m["type"] == "type4":
+            xlabel = "wavelength (nm)"
+            ylabel = "eta (%)"
+            ylabel2 = "j (A/m^2)"
+            trace1 = go.Scatter(
+                x=data[:, 0],
+                y=data[:, 1],
+                mode="lines+markers",
+                name="eta",
+                yaxis="y1",
+            )
+            trace2 = go.Scatter(
+                x=data[:, 0], y=data[:, 2], mode="lines+markers", name="j", yaxis="y2",
+            )
+            xmin = min(data[:, 0])
+            xmax = max(data[:, 0])
+            ymin = min(data[:, 1])
+            ymax = max(data[:, 1])
+            ymin2 = min(data[:, 2])
+            ymax2 = max(data[:, 2])
+            fig.add_trace(trace1)
+            fig.add_trace(trace2)
+            yaxis = {
+                "title": f"{ylabel}",
+                "ticks": "inside",
+                "mirror": True,
+                "linecolor": "#444",
+                "showline": True,
+                "showgrid": False,
+                "range": [ymin, ymax],
+                "zeroline": True,
+            }
+            yaxis2 = {
+                "title": f"{ylabel2}",
+                "ticks": "inside",
+                "linecolor": "#444",
+                "showline": True,
+                "side": "right",
+                "showgrid": False,
+                "range": [ymin2, ymax2],
+                "zeroline": False,
+                "overlaying": "y",
+            }
+            layout = {"yaxis": yaxis, "yaxis2": yaxis2}
+
+        xaxis = {
+            "title": f"{xlabel}",
             "ticks": "inside",
             "mirror": "ticks",
             "linecolor": "#444",
             "showline": True,
             "showgrid": False,
-            "zeroline": True,
-            "range": [ymin, ymax],
-        }
-        layout = {"yaxis": yaxis}
-
-    elif m["type"] == "type2":
-        xlabel = "voltage (V)"
-        ylabel = "current (A)"
-        trace1 = go.Scatter(
-            x=data[:, 0], y=data[:, 1], mode="lines+markers", name="fwd"
-        )
-        trace2 = go.Scatter(
-            x=data[:, 2], y=data[:, 3], mode="lines+markers", name="rev"
-        )
-        xmin = min(np.append(data[:, 0], data[:, 2]))
-        xmax = max(np.append(data[:, 0], data[:, 2]))
-        ymin = min(np.append(data[:, 1], data[:, 3]))
-        ymax = max(np.append(data[:, 1], data[:, 3]))
-        fig.add_trace(trace1)
-        fig.add_trace(trace2)
-        yaxis = {
-            "title": f"{ylabel}",
-            "ticks": "inside",
-            "mirror": "ticks",
-            "linecolor": "#444",
-            "showline": True,
-            "showgrid": False,
-            "range": [ymin, ymax],
+            "range": [xmin, xmax],
             "zeroline": True,
         }
-        layout = {"yaxis": yaxis}
+        layout["xaxis"] = xaxis
+        layout["plot_bgcolor"] = "rgba(0,0,0,0)"
+        fig.update_layout(layout)
 
-    elif m["type"] == "type3":
-        xlabel = "time (s)"
-        ylabel = "current (A) | power (W)"
-        ylabel2 = "voltage (V)"
-        trace1 = go.Scatter(
-            x=data[:, 0], y=data[:, 1], mode="lines+markers", name="I", yaxis="y1",
-        )
-        trace2 = go.Scatter(
-            x=data[:, 0], y=data[:, 2], mode="lines+markers", name="P", yaxis="y1",
-        )
-        trace3 = go.Scatter(
-            x=data[:, 0], y=data[:, 3], mode="lines+markers", name="V", yaxis="y2",
-        )
-        xmin = min(data[:, 0])
-        xmax = max(data[:, 0])
-        ymin = min(np.append(data[:, 1], data[:, 2]))
-        ymax = max(np.append(data[:, 1], data[:, 2]))
-        ymin2 = min(data[:, 3])
-        ymax2 = max(data[:, 3])
-        fig.add_trace(trace1)
-        fig.add_trace(trace2)
-        fig.add_trace(trace3)
-        yaxis = {
-            "title": f"{ylabel}",
-            "ticks": "inside",
-            "mirror": True,
-            "linecolor": "#444",
-            "showline": True,
-            "showgrid": False,
-            "range": [ymin, ymax],
-            "zeroline": True,
-        }
-        yaxis2 = {
-            "title": f"{ylabel2}",
-            "ticks": "inside",
-            "linecolor": "#444",
-            "showline": True,
-            "side": "right",
-            "showgrid": False,
-            "range": [ymin2, ymax2],
-            "zeroline": False,
-            "overlaying": "y",
-        }
-        layout = {"yaxis": yaxis, "yaxis2": yaxis2}
-
-    elif m["type"] == "type4":
-        xlabel = "wavelength (nm)"
-        ylabel = "eta (%)"
-        ylabel2 = "j (A/m^2)"
-        trace1 = go.Scatter(
-            x=data[:, 0], y=data[:, 1], mode="lines+markers", name="eta", yaxis="y1",
-        )
-        trace2 = go.Scatter(
-            x=data[:, 0], y=data[:, 2], mode="lines+markers", name="j", yaxis="y2",
-        )
-        xmin = min(data[:, 0])
-        xmax = max(data[:, 0])
-        ymin = min(data[:, 1])
-        ymax = max(data[:, 1])
-        ymin2 = min(data[:, 2])
-        ymax2 = max(data[:, 2])
-        fig.add_trace(trace1)
-        fig.add_trace(trace2)
-        yaxis = {
-            "title": f"{ylabel}",
-            "ticks": "inside",
-            "mirror": True,
-            "linecolor": "#444",
-            "showline": True,
-            "showgrid": False,
-            "range": [ymin, ymax],
-            "zeroline": True,
-        }
-        yaxis2 = {
-            "title": f"{ylabel2}",
-            "ticks": "inside",
-            "linecolor": "#444",
-            "showline": True,
-            "side": "right",
-            "showgrid": False,
-            "range": [ymin2, ymax2],
-            "zeroline": False,
-            "overlaying": "y",
-        }
-        layout = {"yaxis": yaxis, "yaxis2": yaxis2}
-
-    xaxis = {
-        "title": f"{xlabel}",
-        "ticks": "inside",
-        "mirror": "ticks",
-        "linecolor": "#444",
-        "showline": True,
-        "showgrid": False,
-        "range": [xmin, xmax],
-        "zeroline": True,
-    }
-    layout["xaxis"] = xaxis
-    layout["plot_bgcolor"] = "rgba(0,0,0,0)"
-    fig.update_layout(layout)
-
-    return fig, layout
+    return fig
 
 
 # These are global variables to store and access incoming and plot data. In this
@@ -241,12 +251,8 @@ def update_graph_live(n):
     global latest_data
     global layout
 
-    m = latest_data[0]
-
-    fig = go.Figure(data=[], layout=layout)
-
-    if m["clear"] is not True:
-        fig, layout = format_graph(latest_data, fig)
+    fig = format_graph(latest_data, go.Figure(data=[], layout=layout))
+    layout = fig.layout
 
     return fig
 
