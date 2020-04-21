@@ -14,12 +14,15 @@ MQTTHOST = "mqtt.greyltc.com"
 
 def publish_q_to_mqtt_client(local_q, local_mqttc):
     """Read from queue and publish data using mqtt."""
-    if not local_q.empty():
-        # read data from queue
-        d = local_q.get(timeout=3)
-        local_q.task_done()
-        info = local_mqttc.publish("data", d, qos=2)
-        info.wait_for_publish()
+    while True:
+        if not local_q.empty():
+            # read data from queue
+            d = local_q.get(timeout=3)
+            if d == 'die':  # return if we were asked to die
+                return
+            local_q.task_done()
+            info = local_mqttc.publish("data", d, qos=2)
+            info.wait_for_publish()
 
 # Producer function will add data to a queue that mqtt client worker can publish. It's
 # better not to let mqtt publish data immediately because it's slow and blocks the
@@ -46,6 +49,7 @@ class WrappedClient(mqtt.Client):
         # make sure everything gets cleaned up properly
         print('\nCleaning up...')
         if 'p' in self.__dict__:
+            q.put('die')  # send the thread a kill command
             self.p.join()  # join thread only if it was registered here
         self.loop_stop()
         self.disconnect()
