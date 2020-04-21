@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """MQTT client producing data."""
 
 import json

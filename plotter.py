@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Plot data obtained from MQTT broker using Dash."""
 
 import json
