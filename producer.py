@@ -17,7 +17,7 @@ def publish_q_to_mqtt_client(local_q, local_mqttc):
         # read data from queue
         d = local_q.get(timeout=3)
         local_q.task_done()
-        info = mqttc_client.publish("data", d, qos=2)
+        info = local_mqttc.publish("data", d, qos=2)
         info.wait_for_publish()
 
 # Producer function will add data to a queue that mqtt client worker can publish. It's
