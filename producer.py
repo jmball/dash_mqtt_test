@@ -16,7 +16,8 @@ def publish():
     while True:
         try:
             # read data from queue
-            d = q.get(timeout=2)
+            d = q.get(timeout=3)
+            q.task_done()
             info = mqttc.publish("data", d, qos=2)
             info.wait_for_publish()
         except queue.Empty:
@@ -67,7 +68,7 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
     # Produce data
     while True:
         # data for type 1 graph
-        for i in range(40):
+        for i in range(100):
             y = 1 + (np.random.rand() - 0.5) / 3
             d = {
                 "x1": i,
@@ -83,13 +84,13 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
             time.sleep(0.25)
 
         # signal to clear the data array
+        time.sleep(2)
         d = {"clear": True, "type": "type2"}
         d = json.dumps(d)
         q.put(d)
-        time.sleep(2)
 
         # data for type 2 graph
-        x1 = np.linspace(-1, 10, 11)
+        x1 = np.linspace(-1, 30, 100)
         x2 = x1
         y1 = -2 * x1
         y2 = -2.5 * x2
@@ -99,16 +100,15 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
         d = json.dumps(d)
         # add data to queue
         q.put(d)
-        time.sleep(2)
 
         # signal to clear the data array
+        time.sleep(2)
         d = {"clear": True, "type": "type3"}
         d = json.dumps(d)
         q.put(d)
-        time.sleep(2)
 
         # data for type 3 graph
-        for i in range(40):
+        for i in range(100):
             y1 = 20 + 2 * (np.random.rand() - 0.5)
             y2 = y1 + 1
             y3 = 1 + (np.random.rand() - 0.5) / 3
@@ -118,13 +118,13 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
             time.sleep(0.25)
 
         # signal to clear the data array
+        time.sleep(2)
         d = {"clear": True, "type": "type4"}
         d = json.dumps(d)
         q.put(d)
-        time.sleep(2)
 
         # data for type 4 graph
-        for i in range(40):
+        for i in range(100):
             y1 = -i + 10
             y2 = i
             d = {"x1": i, "y1": y1, "y2": y2, "clear": False, "type": "type4"}
@@ -133,7 +133,7 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
             time.sleep(0.25)
 
         # signal to clear the data array
+        time.sleep(2)
         d = {"clear": True, "type": "type1"}
         d = json.dumps(d)
         q.put(d)
-        time.sleep(2)
