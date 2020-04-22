@@ -15,8 +15,8 @@ DASHHOST = "127.0.0.1"
 
 topic = input("Enter topic to subscribe to [data]: ")
 if topic == "":
-    topic = 'data'
-print(f'Subscribing to mqtt://{MQTTHOST}/{topic}')
+    topic = "data"
+print(f"Subscribing to mqtt://{MQTTHOST}/{topic}")
 
 
 def format_graph(latest_data, fig):
