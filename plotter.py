@@ -13,6 +13,11 @@ import plotly.graph_objs as go
 MQTTHOST = "mqtt.greyltc.com"
 DASHHOST = "127.0.0.1"
 
+topic = input("Enter topic to subscribe to [data]: ")
+if topic == "":
+    topic = 'data'
+print(f'Subscribing to mqtt://{MQTTHOST}/{topic}')
+
 
 def format_graph(latest_data, fig):
     """Format the plot.
@@ -291,7 +296,7 @@ def on_message(mqttc, obj, msg):
 mqttc = mqtt.Client()
 mqttc.on_message = on_message
 mqttc.connect(MQTTHOST)
-mqttc.subscribe("data", qos=2)
+mqttc.subscribe(topic, qos=2)
 
 # start new thread for mqtt client
 mqttc.loop_start()
