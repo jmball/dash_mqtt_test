@@ -10,9 +10,13 @@ import paho.mqtt.client as mqtt
 import numpy as np
 
 MQTTHOST = "mqtt.greyltc.com"
+topic = input("Enter publication topic [data]: ")
+if topic == "":
+    topic = 'data'
+print(f'Publishing to mqtt://{MQTTHOST}/{topic}')
+print('Use Ctrl-C to abort.')
 
-
-def publish_q_to_mqtt_client(local_q, local_mqttc):
+def publish_q_to_mqtt_client(local_q, local_mqttc, local_topic):
     """Read from queue and publish data using mqtt."""
     while True:
         if len(q) > 0:
@@ -20,7 +24,7 @@ def publish_q_to_mqtt_client(local_q, local_mqttc):
             d = local_q.popleft()
             if d == 'die':  # return if we were asked to die
                 return
-            info = local_mqttc.publish("data", d, qos=2)
+            info = local_mqttc.publish(local_topic, d, qos=2)
             info.wait_for_publish()
 
 # Producer function will add data to a queue that mqtt client worker can publish. It's
@@ -64,7 +68,7 @@ c.connect(MQTTHOST)  # fake connection here
 # create client and connect to server
 with c as mqttc: # actual connection happens in the __enter__ that gets called here
     # Create thread that reads from queue and publishes data over mqtt.
-    p = threading.Thread(target=publish_q_to_mqtt_client, args=(q, mqttc, ))
+    p = threading.Thread(target=publish_q_to_mqtt_client, args=(q, mqttc, topic, ))
     p.start()
     mqttc.register_thread(p)  # register the thread so it gets cleaned up
     mqttc.register_q(q)  # register the queue so we can send the cleanup command
