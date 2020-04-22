@@ -22,10 +22,11 @@ def publish_q_to_mqtt_client(local_q, local_mqttc, local_topic):
         if len(q) > 0:
             # read data from queue
             d = local_q.popleft()
-            if d == 'die':  # return if we were asked to die
+            if d == "die":  # return if we were asked to die
                 return
             info = local_mqttc.publish(local_topic, d, qos=2)
             info.wait_for_publish()
+
 
 # Producer function will add data to a queue that mqtt client worker can publish. It's
 # better not to let mqtt publish data immediately because it's slow and blocks the
@@ -54,19 +55,23 @@ class WrappedClient(mqtt.Client):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # make sure everything gets cleaned up properly
-        print('\nCleaning up...')
-        if ('p' in self.__dict__) and ('q' in self.__dict__):
-            self.q.appendleft('die')  # send the thread a kill command
+        print("\nCleaning up...")
+        if ("p" in self.__dict__) and ("q" in self.__dict__):
+            self.q.appendleft("die")  # send the thread a kill command
             self.p.join()  # join thread only if it was registered here
         self.loop_stop()
         self.disconnect()
-        print('All clean!')
+        print("All clean!")
+
 
 c = WrappedClient()
 c.connect(MQTTHOST)  # fake connection here
 
+# number of points per graph
+n = 30
+
 # create client and connect to server
-with c as mqttc: # actual connection happens in the __enter__ that gets called here
+with c as mqttc:  # actual connection happens in the __enter__ that gets called here
     # Create thread that reads from queue and publishes data over mqtt.
     p = threading.Thread(target=publish_q_to_mqtt_client, args=(q, mqttc, topic, ))
     p.start()
@@ -79,7 +84,7 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
     # Produce data
     while True:
         # data for type 1 graph
-        for i in range(100):
+        for i in range(n):
             y = 1 + (np.random.rand() - 0.5) / 3
             d = {
                 "x1": i,
@@ -101,7 +106,7 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
         q.append(d)
 
         # data for type 2 graph
-        x1 = np.linspace(-1, 30, 100)
+        x1 = np.linspace(-1, 30, n)
         x2 = x1
         y1 = -2 * x1
         y2 = -2.5 * x2
@@ -119,7 +124,7 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
         q.append(d)
 
         # data for type 3 graph
-        for i in range(100):
+        for i in range(n):
             y1 = 20 + 2 * (np.random.rand() - 0.5)
             y2 = y1 + 1
             y3 = 1 + (np.random.rand() - 0.5) / 3
@@ -135,7 +140,7 @@ with c as mqttc: # actual connection happens in the __enter__ that gets called h
         q.append(d)
 
         # data for type 4 graph
-        for i in range(100):
+        for i in range(n):
             y1 = -i + 10
             y2 = i
             d = {"x1": i, "y1": y1, "y2": y2, "clear": False, "type": "type4"}
