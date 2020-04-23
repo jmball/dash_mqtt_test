@@ -20,37 +20,45 @@ print("Use Ctrl-C to abort.")
 class MQTTQueuePublisher(mqtt.Client):
     """MQTT client that publishes data from its own queue."""
 
-    def __init__(self, host, topic):
+    def __init__(self, host):
         """Init MQTT queue publisher client, inheriting from MQTT client.
 
         Parameters
         ----------
         host : str
             MQTT broker host name.
+        """
+        super().__init__()
+        self.connect(host)
+        self.loop_start()
+        self.qs = {}  # dictionary of quques labelled by topic
+
+    def start_q(self, topic):
+        """Start a thread that publishes data from the queue on a topic.
+
         topic : str
             MQTT topic to publish to.
         """
-        super().__init__()
-        self.topic = topic
-        self.connect(host)
-        self.loop_start()
-        self.q = collections.deque()
-        self._start_q_thread()
+        q = collections.deque()
+        t = threading.Thread(target=self._queue_publisher, args=(q, topic))
+        t.start()
+        self.qs[topic] = {"q": q, "t": t}
 
-    def _start_q_thread(self):
-        """Start a thread that publishes data from the queue."""
-        self._q_thread = threading.Thread(target=self._queue_publisher)
-        self._q_thread.start()
+    def _queue_publisher(self, q, topic):
+        """Publish elements in the queue.
 
-    def _queue_publisher(self):
-        """Publish elements in the queue."""
+        q : deque
+            Deque to publish to.
+        topic : str
+            MQTT topic to publish to.
+        """
         while True:
-            if len(self.q) > 0:
+            if len(q) > 0:
                 # read data from queue
-                d = self.q.popleft()
+                d = q.popleft()
                 if d == "die":  # return if we were asked to die
                     break
-                info = self.publish(self.topic, d, qos=2)
+                info = self.publish(topic, d, qos=2)
                 info.wait_for_publish()
 
     def __enter__(self):
@@ -60,10 +68,12 @@ class MQTTQueuePublisher(mqtt.Client):
     def __exit__(self, exc_type, exc_value, traceback):
         """Exit the runtime context related to this object.
 
-        Make sure everything gets cleaned up properly."""
+        Make sure everything gets cleaned up properly.
+        """
         print("\nCleaning up...")
-        self.q.appendleft("die")  # send the queue thread a kill command
-        self._q_thread.join()  # join thread
+        for d in self.qs.values():
+            d["q"].appendleft("die")  # send the queue thread a kill command
+            d["t"].join()  # join thread
         self.loop_stop()
         self.disconnect()
         print("All clean!")
@@ -72,17 +82,15 @@ class MQTTQueuePublisher(mqtt.Client):
 class MQTTDataHandler(MQTTQueuePublisher):
     """Handle incoming data by publishing it with MQTT client."""
 
-    def __init__(self, host, topic):
+    def __init__(self, host):
         """Construct MQTT queue publisher.
 
         Parameters
         ----------
         host : str
             MQTT broker host name.
-        topic : str
-            MQTT topic to publish to.
         """
-        super().__init__(host, topic)
+        super().__init__(host)
 
     def handle_data(self, data):
         """Perform tasks with data.
@@ -92,7 +100,7 @@ class MQTTDataHandler(MQTTQueuePublisher):
         data : JSON str
             JSON-ified data string
         """
-        self.q.append(data)
+        self.qs[topic]["q"].append(data)
 
 
 def exp_1(n, data_handler=None):
@@ -189,7 +197,8 @@ def exp_4(n, data_handler=None):
 
 
 # create MQTT publisher client
-mqttdh = MQTTDataHandler(MQTTHOST, topic)
+mqttdh = MQTTDataHandler(MQTTHOST)
+mqttdh.start_q(topic)  # start queue for topic
 
 # number of points per graph
 n = 30
@@ -205,7 +214,7 @@ with mqttdh:
         time.sleep(2)
         d = {"clear": True, "type": "type2"}
         d = json.dumps(d)
-        mqttdh.q.append(d)
+        mqttdh.qs[topic]["q"].append(d)
 
         # run experiment with a type 2 graph
         exp_2(n, mqttdh)
@@ -214,7 +223,7 @@ with mqttdh:
         time.sleep(2)
         d = {"clear": True, "type": "type3"}
         d = json.dumps(d)
-        mqttdh.q.append(d)
+        mqttdh.qs[topic]["q"].append(d)
 
         # run experiment with a type 3 graph
         exp_3(n, mqttdh)
@@ -223,7 +232,7 @@ with mqttdh:
         time.sleep(2)
         d = {"clear": True, "type": "type4"}
         d = json.dumps(d)
-        mqttdh.q.append(d)
+        mqttdh.qs[topic]["q"].append(d)
 
         # run experiment with a type 4 graph
         exp_4(n, mqttdh)
@@ -232,4 +241,4 @@ with mqttdh:
         time.sleep(2)
         d = {"clear": True, "type": "type1"}
         d = json.dumps(d)
-        mqttdh.q.append(d)
+        mqttdh.qs[topic]["q"].append(d)
