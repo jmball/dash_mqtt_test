@@ -125,8 +125,8 @@ def exp_1(n, data_handler=None):
         # turn dict into string that mqtt can send
         d = json.dumps(d)
         # handle data if possible
-        if hasattr(data_handler, "handle_data"):
-            data_handler.handle_data(d)
+        if data_handler is not None:
+            data_handler(d)
         time.sleep(0.25)
 
 
@@ -149,8 +149,8 @@ def exp_2(n, data_handler=None):
     # turn dict into string that mqtt can send
     d = json.dumps(d)
     # handle data if possible
-    if hasattr(data_handler, "handle_data"):
-        data_handler.handle_data(d)
+    if data_handler is not None:
+        data_handler(d)
 
 
 def exp_3(n, data_handler=None):
@@ -170,8 +170,8 @@ def exp_3(n, data_handler=None):
         d = {"x1": i, "y1": y1, "y2": y2, "y3": y3, "clear": False, "type": "type3"}
         d = json.dumps(d)
         # handle data if possible
-        if hasattr(data_handler, "handle_data"):
-            data_handler.handle_data(d)
+        if data_handler is not None:
+            data_handler(d)
         time.sleep(0.25)
 
 
@@ -191,8 +191,8 @@ def exp_4(n, data_handler=None):
         d = {"x1": i, "y1": y1, "y2": y2, "clear": False, "type": "type4"}
         d = json.dumps(d)
         # handle data if possible
-        if hasattr(data_handler, "handle_data"):
-            data_handler.handle_data(d)
+        if data_handler is not None:
+            data_handler(d)
         time.sleep(0.25)
 
 
@@ -208,7 +208,7 @@ with mqttdh:
     # produce data
     while True:
         # run experiment with a type 1 graph
-        exp_1(n, mqttdh)
+        exp_1(n, mqttdh.handle_data)
 
         # signal to clear the data array
         time.sleep(2)
@@ -217,7 +217,7 @@ with mqttdh:
         mqttdh.qs[topic]["q"].append(d)
 
         # run experiment with a type 2 graph
-        exp_2(n, mqttdh)
+        exp_2(n, mqttdh.handle_data)
 
         # signal to clear the data array
         time.sleep(2)
@@ -226,7 +226,7 @@ with mqttdh:
         mqttdh.qs[topic]["q"].append(d)
 
         # run experiment with a type 3 graph
-        exp_3(n, mqttdh)
+        exp_3(n, mqttdh.handle_data)
 
         # signal to clear the data array
         time.sleep(2)
@@ -235,7 +235,7 @@ with mqttdh:
         mqttdh.qs[topic]["q"].append(d)
 
         # run experiment with a type 4 graph
-        exp_4(n, mqttdh)
+        exp_4(n, mqttdh.handle_data)
 
         # signal to clear the data array
         time.sleep(2)
