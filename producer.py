@@ -3,7 +3,6 @@
 
 import json
 import collections
-import multiprocessing
 import threading
 import time
 import warnings
@@ -12,11 +11,6 @@ import paho.mqtt.client as mqtt
 import numpy as np
 
 MQTTHOST = "mqtt.greyltc.com"
-topic = input("Enter publication topic [data]: ")
-if topic == "":
-    topic = "data"
-print(f"Publishing to mqtt://{MQTTHOST}/{topic}")
-print("Use Ctrl-C to abort.")
 
 
 class MQTTQueuePublisher(mqtt.Client):
@@ -39,8 +33,13 @@ class MQTTQueuePublisher(mqtt.Client):
 
     @property
     def topic(self):
-        """Read topic attribute."""
+        """Get topic attribute."""
         return self._topic
+
+    @property
+    def q_size(self):
+        """Get current length of deque."""
+        return len(self._q)
 
     def start_q(self, topic):
         """Start queue and mqtt client threads.
@@ -54,9 +53,7 @@ class MQTTQueuePublisher(mqtt.Client):
             self._topic = topic
             self.loop_start()  # start MQTT client thread
             self._q = collections.deque()
-            self._t = threading.Thread(
-                target=self._queue_publisher, args=(self._q, self._topic)
-            )
+            self._t = threading.Thread(target=self._queue_publisher)
             self._t.start()
         else:
             warnings.warn(
@@ -70,15 +67,15 @@ class MQTTQueuePublisher(mqtt.Client):
         self.loop_stop()
         self._topic = None  # forget thread and queue
 
-    def append_payload(self, topic, payload):
+    def append_payload(self, payload):
         """Append a payload to a queue.
 
-        topic : str
-            MQTT topic to publish to.
+        payload : str
+            Message to be added to deque.
         """
         self._q.append(payload)
 
-    def _queue_publisher(self, q, topic):
+    def _queue_publisher(self):
         """Publish elements in the queue.
 
         q : deque
@@ -87,13 +84,12 @@ class MQTTQueuePublisher(mqtt.Client):
             MQTT topic to publish to.
         """
         while True:
-            if len(q) > 0:
-                # read data from queue
-                payload = q.popleft()
-                if payload == "stop":  # return if we were asked to die
+            if len(self._q) > 0:
+                payload = self._q.popleft()
+                if payload == "stop":
                     break
                 # publish paylod with blocking wait for completion
-                self.publish(topic, payload, qos=2).wait_for_publish()
+                self.publish(self._topic, payload, qos=2).wait_for_publish()
 
     def __enter__(self):
         """Enter the runtime context related to this object."""
@@ -134,13 +130,13 @@ class VoltageDataHandler(MQTTQueuePublisher):
         """
         payload = {
             "x1": data[0],
-            "y1": data[0],
+            "y1": data[1],
             "clear": False,
             "id": self.idn,
         }
         # turn dict into string that mqtt can send
         payload = json.dumps(payload)
-        self.append_payload(topic, payload)
+        self.append_payload(payload)
 
 
 class IVDataHandler(MQTTQueuePublisher):
@@ -172,7 +168,7 @@ class IVDataHandler(MQTTQueuePublisher):
         }
         # turn dict into string that mqtt can send
         payload = json.dumps(payload)
-        self.append_payload(topic, payload)
+        self.append_payload(payload)
 
 
 class MPPTDataHandler(MQTTQueuePublisher):
@@ -206,7 +202,7 @@ class MPPTDataHandler(MQTTQueuePublisher):
             "id": self.idn,
         }
         payload = json.dumps(payload)
-        self.append_payload(topic, payload)
+        self.append_payload(payload)
 
 
 class CurrentDataHandler(MQTTQueuePublisher):
@@ -233,13 +229,13 @@ class CurrentDataHandler(MQTTQueuePublisher):
         """
         payload = {
             "x1": data[0],
-            "y1": data[0],
+            "y1": data[1],
             "clear": False,
             "id": self.idn,
         }
         # turn dict into string that mqtt can send
         payload = json.dumps(payload)
-        self.append_payload(topic, payload)
+        self.append_payload(payload)
 
 
 class EQEDataHandler(MQTTQueuePublisher):
@@ -272,112 +268,7 @@ class EQEDataHandler(MQTTQueuePublisher):
             "id": self.idn,
         }
         payload = json.dumps(payload)
-        self.append_payload(topic, payload)
-
-
-# class MQTTDataHandler(MQTTQueuePublisher):
-#     """Handle incoming data by publishing it with MQTT client."""
-
-#     def __init__(self, idn=""):
-#         """Construct MQTT queue publisher.
-
-#         Parameters
-#         ----------
-#         idn : str
-#             Identity string to send with data.
-#         """
-#         super().__init__()
-#         self.idn = idn
-
-#     def exp1_handle_data(self, data):
-#         """Perform tasks with data.
-
-#         Parameters
-#         ----------
-#         data : list or str
-#             List of data from exp_1.
-#         """
-#         payload = {
-#             "x1": data[0],
-#             "y1": data[0],
-#             "clear": False,
-#             "id": self.idn,
-#         }
-#         # turn dict into string that mqtt can send
-#         payload = json.dumps(payload)
-#         self.append_payload(topic, payload)
-
-#     def exp2_handle_data(self, data):
-#         """Perform tasks with data.
-
-#         Parameters
-#         ----------
-#         data : array
-#             Array of data from exp_2.
-#         """
-#         payload = {
-#             "data": data.tolist(),
-#             "clear": False,
-#             "id": self.idn,
-#         }
-#         # turn dict into string that mqtt can send
-#         payload = json.dumps(payload)
-#         self.append_payload(topic, payload)
-
-#     def exp3_handle_data(self, data):
-#         """Perform tasks with data.
-
-#         Parameters
-#         ----------
-#         data : list
-#             List of data from exp_4.
-#         """
-#         payload = {
-#             "x1": data[0],
-#             "y1": data[1],
-#             "y2": data[2],
-#             "y3": data[3],
-#             "clear": False,
-#             "id": self.idn,
-#         }
-#         payload = json.dumps(payload)
-#         self.append_payload(topic, payload)
-
-#     def exp4_handle_data(self, data):
-#         """Perform tasks with data.
-
-#         Parameters
-#         ----------
-#         data : list
-#             List of data from exp_4.
-#         """
-#         payload = {
-#             "x1": data[0],
-#             "y1": data[0],
-#             "clear": False,
-#             "id": self.idn,
-#         }
-#         # turn dict into string that mqtt can send
-#         payload = json.dumps(payload)
-#         self.append_payload(topic, payload)
-
-#     def exp5_handle_data(self, data):
-#         """Perform tasks with data.
-
-#         Parameters
-#         ----------
-#         data : list
-#             List of data from exp_4.
-#         """
-#         payload = {
-#             "x1": data[0],
-#             "y1": data[1],
-#             "y2": data[2],
-#             "clear": False,
-#             "id": self.idn,
-#         }
-#         payload = json.dumps(payload)
-#         self.append_payload(topic, payload)
+        self.append_payload(payload)
 
 
 def exp_1(n, data_handler=None):
@@ -499,96 +390,70 @@ def producer(args):
     data_handler : function handle
         Data handler function.
     """
-    n, exp, mqttdh = args
+    n, m, exp, mqttdh = args
     with mqttdh:
-        for i in range(1):
+        for i in range(m):
             mqttdh.idn = f"dev{i}"
             exp(n, mqttdh.handle_data)
             time.sleep(5)
             d = {"clear": True, "id": f"{mqttdh.idn}"}
             d = json.dumps(d)
-            mqttdh.append_payload(topic, d)
+            mqttdh.append_payload(d)
             i += 1
+        while mqttdh.q_size > 0:
+            time.sleep(1)
+    mqttdh.end_q()
+    mqttdh.disconnect()
 
 
-# number of points per graph
-n = 30
+if __name__ == "__main__":
+    import argparse
 
-subtopics = []
-subtopics.append(f"{topic}/exp1")
-subtopics.append(f"{topic}/exp2")
-subtopics.append(f"{topic}/exp3")
-subtopics.append(f"{topic}/exp4")
-subtopics.append(f"{topic}/exp5")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-t", metavar="t", type=str, default="data", help="Topic.")
+    parser.add_argument(
+        "-n", metavar="n", type=int, default=30, help="Number of points."
+    )
+    parser.add_argument(
+        "-m", metavar="m", type=int, default=2, help="Number of repeats."
+    )
+    parser.add_argument(
+        "-e",
+        metavar="e",
+        type=int,
+        default=1,
+        nargs="+",
+        help="Experiment type(s) from range 1-5.",
+    )
+    args = parser.parse_args()
 
-vdh = VoltageDataHandler()
-idh = IVDataHandler()
-mdh = MPPTDataHandler()
-cdh = CurrentDataHandler()
-edh = EQEDataHandler()
+    topic = args.t
+    print(f"Publishing to mqtt://{MQTTHOST}/{topic}")
+    print("Use Ctrl-C to abort.")
 
-dhs = [vdh, idh, mdh, cdh, edh]
+    subtopics = []
+    subtopics.append(f"{topic}/exp1")
+    subtopics.append(f"{topic}/exp2")
+    subtopics.append(f"{topic}/exp3")
+    subtopics.append(f"{topic}/exp4")
+    subtopics.append(f"{topic}/exp5")
 
-for dh, st in zip(dhs, subtopics):
-    dh.connect(MQTTHOST)
-    dh.start_q(st)
+    print(args)
 
-# produce data in series
-producer((n, exp_1, vdh))
-producer((n, exp_2, idh))
-producer((n, exp_3, mdh))
-producer((n, exp_4, cdh))
-producer((n, exp_5, edh))
+    vdh = VoltageDataHandler()
+    idh = IVDataHandler()
+    mdh = MPPTDataHandler()
+    cdh = CurrentDataHandler()
+    edh = EQEDataHandler()
 
+    dhs = [vdh, idh, mdh, cdh, edh]
+    exps = [exp_1, exp_2, exp_3, exp_4, exp_5]
 
-# producers = []
-# for subtopic, exp, dh in zip(subtopics, experiments, data_handlers):
-#     print(subtopic)
-#     dh.connect(MQTTHOST)
-#     dh.start_q(subtopic)
-#     _t = threading.Thread(target=producer, args=(n, exp, dh, dh.handle_data))
-#     _t.start()
-#     producers.append(_t)
-
-
-# for t in producers:
-#     t.join()
-# # Produce data and publish it in context
-# with mqttdh:
-#     # produce data
-#     while True:
-#         # run experiment with a type 1 graph
-#         exp_1(n, mqttdh.exp1_handle_data)
-
-#         # signal to clear the data array
-#         time.sleep(2)
-#         d = {"clear": True, "type": "type2"}
-#         d = json.dumps(d)
-#         mqttdh.append_payload(topic, d)
-
-#         # run experiment with a type 2 graph
-#         exp_2(n, mqttdh.exp2_handle_data)
-
-#         # signal to clear the data array
-#         time.sleep(2)
-#         d = {"clear": True, "type": "type3"}
-#         d = json.dumps(d)
-#         mqttdh.append_payload(topic, d)
-
-#         # run experiment with a type 3 graph
-#         exp_3(n, mqttdh.exp3_handle_data)
-
-#         # signal to clear the data array
-#         time.sleep(2)
-#         d = {"clear": True, "type": "type4"}
-#         d = json.dumps(d)
-#         mqttdh.append_payload(topic, d)
-
-#         # run experiment with a type 4 graph
-#         exp_4(n, mqttdh.exp4_handle_data)
-
-#         # signal to clear the data array
-#         time.sleep(2)
-#         d = {"clear": True, "type": "type1"}
-#         d = json.dumps(d)
-#         mqttdh.append_payload(topic, d)
+    # simulate experiments in series
+    for i in args.e:
+        if (i > 0) & (i < 6):
+            dhs[i - 1].connect(MQTTHOST)
+            dhs[i - 1].start_q(subtopics[i - 1])
+            producer((args.n, args.m, exps[i - 1], dhs[i - 1]))
+        else:
+            raise ValueError(f"Invalid experiment type: {i}. Must be in range 1-5.")
