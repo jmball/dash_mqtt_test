@@ -7,6 +7,7 @@ import time
 
 import dash
 import dash_core_components as dcc
+import dash_daq as daq
 import dash_html_components as html
 import numpy as np
 import paho.mqtt.client as mqtt
@@ -389,6 +390,38 @@ app.layout = html.Div(
             [
                 html.Div([dcc.Graph(id="g4", figure=fig4)], className="four columns",),
                 html.Div([dcc.Graph(id="g5", figure=fig5)], className="four columns",),
+                html.Div(
+                    [
+                        daq.ToggleSwitch(
+                            id="pause-switch",
+                            value=False,
+                            color="#36C95D",
+                            label=[
+                                {
+                                    "style": {
+                                        "font-size": "large",
+                                        "font-family": "sans-serif",
+                                    },
+                                    "label": "Live",
+                                },
+                                {
+                                    "style": {
+                                        "font-size": "large",
+                                        "font-family": "sans-serif",
+                                    },
+                                    "label": "Paused",
+                                },
+                            ],
+                            size=75,
+                            style={
+                                "width": "250px",
+                                "margin": "auto",
+                                "margin-top": "200px",
+                            },
+                        )
+                    ],
+                    className="four columns",
+                ),
             ],
             className="row",
         ),
@@ -416,24 +449,38 @@ app.layout = html.Div(
         dash.dependencies.State("g3", "figure"),
         dash.dependencies.State("g4", "figure"),
         dash.dependencies.State("g5", "figure"),
+        dash.dependencies.State("pause-switch", "value"),
     ],
 )
-def update_graph_live(n, g1, g2, g3, g4, g5):
+def update_graph_live(n, g1, g2, g3, g4, g5, paused):
     """Update graph."""
-    g1_latest = graph1_latest[0]
-    g2_latest = graph2_latest[0]
-    g3_latest = graph3_latest[0]
-    g4_latest = graph4_latest[0]
-    g5_latest = graph5_latest[0]
+    if paused is not True:
+        g1_latest = graph1_latest[0]
+        g2_latest = graph2_latest[0]
+        g3_latest = graph3_latest[0]
+        g4_latest = graph4_latest[0]
+        g5_latest = graph5_latest[0]
 
-    # update figures
-    g1 = format_figure_1(g1_latest["data"], g1, g1_latest["msg"]["id"])
-    g2 = format_figure_2(g2_latest["data"], g2, g2_latest["msg"]["id"])
-    g3 = format_figure_3(g3_latest["data"], g3, g3_latest["msg"]["id"])
-    g4 = format_figure_4(g4_latest["data"], g4, g4_latest["msg"]["id"])
-    g5 = format_figure_5(g5_latest["data"], g5, g5_latest["msg"]["id"])
+        # update figures
+        g1 = format_figure_1(g1_latest["data"], g1, g1_latest["msg"]["id"])
+        g2 = format_figure_2(g2_latest["data"], g2, g2_latest["msg"]["id"])
+        g3 = format_figure_3(g3_latest["data"], g3, g3_latest["msg"]["id"])
+        g4 = format_figure_4(g4_latest["data"], g4, g4_latest["msg"]["id"])
+        g5 = format_figure_5(g5_latest["data"], g5, g5_latest["msg"]["id"])
 
     return g1, g2, g3, g4, g5
+
+
+@app.callback(
+    dash.dependencies.Output("pause-switch", "color"),
+    [dash.dependencies.Input("pause-switch", "value")],
+)
+def pause_button(paused):
+    """Update color of pause button."""
+    if paused is True:
+        return "#FF5E5E"
+    else:
+        return "#36C95D"
 
 
 # MQTT on_message callback functions for each graph
@@ -538,7 +585,7 @@ if __name__ == "__main__":
         mqttc.loop_start()
 
     # start dash server
-    app.run_server(host=DASHHOST, debug=False)
+    app.run_server(host=DASHHOST, debug=True)
 
     # stop mqtt client threads
     for mqttc in mqtt_clients:
