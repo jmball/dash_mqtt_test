@@ -13,6 +13,7 @@ import numpy as np
 import paho.mqtt.client as mqtt
 import plotly
 import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 
 MQTTHOST = "mqtt.greyltc.com"
 DASHHOST = "127.0.0.1"
@@ -220,7 +221,7 @@ graph4_latest.append({"msg": {"clear": True, "id": "-"}, "data": np.empty((0, 2)
 graph5_latest.append({"msg": {"clear": True, "id": "-"}, "data": np.empty((0, 3))})
 
 # initial figure properties
-fig1 = plotly.subplots.make_subplots(subplot_titles=["-"])
+fig1 = make_subplots(subplot_titles=["-"])
 fig1.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="v"))
 fig1.update_xaxes(
     title="time (s)",
@@ -244,7 +245,7 @@ fig1.update_yaxes(
 )
 fig1.update_layout(margin=dict(l=20, r=0, t=30, b=0), plot_bgcolor="rgba(0,0,0,0)")
 
-fig2 = plotly.subplots.make_subplots(subplot_titles=["-"])
+fig2 = make_subplots(subplot_titles=["-"])
 fig2.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="fwd"))
 fig2.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="rev"))
 fig2.update_xaxes(
@@ -269,7 +270,7 @@ fig2.update_yaxes(
 )
 fig2.update_layout(margin=dict(l=20, r=0, t=30, b=0), plot_bgcolor="rgba(0,0,0,0)")
 
-fig3 = plotly.subplots.make_subplots(
+fig3 = make_subplots(
     specs=[[{"secondary_y": True}]], subplot_titles=["-"]
 )
 fig3.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="j"))
@@ -309,7 +310,7 @@ fig3.update_yaxes(
 )
 fig3.update_layout(margin=dict(l=20, r=0, t=30, b=0), plot_bgcolor="rgba(0,0,0,0)")
 
-fig4 = plotly.subplots.make_subplots(subplot_titles=["-"])
+fig4 = make_subplots(subplot_titles=["-"])
 fig4.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="j"))
 fig4.update_xaxes(
     title="time (s)",
@@ -333,7 +334,7 @@ fig4.update_yaxes(
 )
 fig4.update_layout(margin=dict(l=20, r=0, t=30, b=0), plot_bgcolor="rgba(0,0,0,0)")
 
-fig5 = plotly.subplots.make_subplots(
+fig5 = make_subplots(
     specs=[[{"secondary_y": True}]], subplot_titles=["-"]
 )
 fig5.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="eta"))
